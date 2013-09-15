@@ -82,6 +82,10 @@ static int allowfileowner_handler(request_rec *r)
     allowfileowner_dir_config *d2;
     int i;
 
+    if (strcmp(r->handler,"allowfileowner")) {
+        return DECLINED;
+    }
+
     d = (core_dir_config *)ap_get_module_config(r->per_dir_config,
                                                 &core_module);
     d2 = (allowfileowner_dir_config *)ap_get_module_config(r->per_dir_config,
