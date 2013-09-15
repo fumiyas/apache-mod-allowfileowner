@@ -56,7 +56,7 @@ static const char *allowfileowner_cmd(cmd_parms *cmd, void *in_conf,
     while (*args) {
         username = ap_getword_conf(cmd->pool, &args);
 	uidp = (apr_uid_t *) apr_array_push(conf->owner_uids);
-	*uidp = ap_uname2id(username);
+	*uidp = (apr_uid_t) ap_uname2id(username);
     }
 
     return NULL;
@@ -169,7 +169,7 @@ static int allowfileowner_handler(request_rec *r)
 	    }
 
 	    for (i = 0; i < d2->owner_uids->nelts; ++i) {
-		apr_uid_t uid = (apr_uid_t) (d2->owner_uids->elts)[i];
+		apr_uid_t uid = ((apr_uid_t *)(d2->owner_uids->elts))[i];
 		if (uid == finfo.user) {
 		    uid_found = 1;
 		    break;
