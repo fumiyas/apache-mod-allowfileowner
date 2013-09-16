@@ -26,7 +26,6 @@
 #include "http_config.h"
 #include "http_protocol.h"
 #include "http_log.h"
-#include "mpm_common.h"
 #include "util_filter.h"
 
 static const char filter_name[] = "ALLOWFILEOWNER";
@@ -53,12 +52,15 @@ static const char *allowfileowner_cmd(cmd_parms *cmd, void *in_conf,
 {
     allowfileowner_dir_config *conf = in_conf;
     const char *username;
-    apr_uid_t *uidp;
+    apr_uid_t uid, *uidp;
+    apr_gid_t gid;
 
     while (*args) {
         username = ap_getword_conf(cmd->pool, &args);
-	uidp = (apr_uid_t *) apr_array_push(conf->owner_uids);
-	*uidp = (apr_uid_t) ap_uname2id(username);
+	if (apr_uid_get(&uid, &gid, username, cmd->pool) == APR_SUCCESS) {
+	    uidp = (apr_uid_t *) apr_array_push(conf->owner_uids);
+	    *uidp = uid;
+	}
     }
 
     return NULL;
@@ -91,8 +93,11 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
     }
 
     if (d->userdir && userdir_user) {
-	apr_uid_t uid = (apr_uid_t) ap_uname2id(userdir_user);
-	if (uid == finfo.user) {
+	apr_uid_t uid;
+	apr_gid_t gid;
+
+	if (apr_uid_get(&uid, &gid, userdir_user, r->pool) == APR_SUCCESS
+	    && uid == finfo.user) {
 	    return HTTP_OK;
 	}
     }
