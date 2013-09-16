@@ -28,11 +28,10 @@ LoadModule allowfileowner_module modules/mod_allowfileowner.so
   UserDir public_html
   <Directory /home/*/public_html>
     ## Content files must be owned by the individual user
-    ## ...
+    AllowFileOwnerInUserDir On
   </Directory>
 
   ## ...
 </VirtualHost>
-
 ```
 

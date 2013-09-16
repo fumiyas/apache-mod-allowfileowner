@@ -35,6 +35,7 @@ module AP_MODULE_DECLARE_DATA allowfileowner_module;
 
 typedef struct {
     apr_array_header_t *owner_uids;
+    int userdir;
 } allowfileowner_dir_config;
 
 static void *create_dir_config(apr_pool_t *p, char *d)
@@ -42,6 +43,7 @@ static void *create_dir_config(apr_pool_t *p, char *d)
     allowfileowner_dir_config *conf = apr_pcalloc(p, sizeof(*conf));
 
     conf->owner_uids = apr_array_make(p, 1, sizeof(apr_uid_t));
+    conf->userdir = 0;
 
     return conf;
 }
@@ -88,7 +90,7 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
 	return HTTP_FORBIDDEN;
     }
 
-    if (userdir_user) {
+    if (d->userdir && userdir_user) {
 	apr_uid_t uid = (apr_uid_t) ap_uname2id(userdir_user);
 	if (uid == finfo.user) {
 	    return HTTP_OK;
@@ -141,6 +143,11 @@ static const command_rec module_cmds[] =
 {
     AP_INIT_RAW_ARGS("AllowFileOwner", allowfileowner_cmd, NULL, OR_FILEINFO,
                      "A list of user names which content files must be owned by"),
+    AP_INIT_FLAG("AllowFileOwnerInUserDir", ap_set_flag_slot,
+                 (void *)APR_OFFSETOF(allowfileowner_dir_config, userdir),
+                 OR_FILEINFO,
+                 "Set to 'On' to allow static contents files under user's "
+		 "directory to be owned by the user"),
     {NULL}
 };
 
