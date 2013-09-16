@@ -59,49 +59,69 @@ static const char *allowfileowner_cmd(cmd_parms *cmd, void *in_conf,
     return NULL;
 }
 
+static int allowfileowner_check(request_rec *r, apr_file_t *fd)
+{
+    allowfileowner_dir_config *d;
+    const char *userdir_user;
+    apr_finfo_t finfo;
+    apr_status_t status;
+    int i;
+
+    d = (allowfileowner_dir_config *)ap_get_module_config(r->per_dir_config,
+                                                &allowfileowner_module);
+
+    userdir_user = apr_table_get(r->notes, "mod_userdir_user");
+
+    if (!d->owner_uids->nelts && !userdir_user) {
+	return HTTP_OK;
+    }
+
+    status = apr_file_info_get(&finfo, APR_FINFO_OWNER, fd);
+    if (status != APR_SUCCESS) {
+	ap_log_rerror(APLOG_MARK, APLOG_ERR, status, r,
+		      "allowfileowner_filter: "
+		      "apr_file_info_get() failed: %s",
+		      r->filename);
+	return HTTP_FORBIDDEN;
+    }
+
+    if (userdir_user) {
+	apr_uid_t uid = (apr_uid_t) ap_uname2id(userdir_user);
+	if (uid == finfo.user) {
+	    return HTTP_OK;
+	}
+    }
+
+    for (i = 0; i < d->owner_uids->nelts; ++i) {
+	apr_uid_t uid = ((apr_uid_t *)(d->owner_uids->elts))[i];
+	if (uid == finfo.user) {
+	    return HTTP_OK;
+	}
+    }
+
+    ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
+		  "allowfileowner_filter: "
+		  "Invalid file owner %ld: %s",
+		  (long)finfo.user, r->filename);
+
+    return HTTP_FORBIDDEN;
+}
+
 static apr_status_t allowfileowner_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 {
     apr_status_t status;
     allowfileowner_dir_config *d;
     apr_bucket *e = APR_BRIGADE_FIRST(bb);
     apr_bucket_file *a;
-    int i;
-    int uid_found = 0;
-    apr_finfo_t finfo;
+    int errstatus;
 
     if (!APR_BUCKET_IS_FILE(e)) {
         return ap_pass_brigade(f->next, bb);
     }
 
-    d = (allowfileowner_dir_config *)ap_get_module_config(f->r->per_dir_config,
-                                                &allowfileowner_module);
-    if (d->owner_uids->nelts == 0) {
-        return ap_pass_brigade(f->next, bb);
-    }
-
     a = e->data;
-    status = apr_file_info_get(&finfo, APR_FINFO_OWNER, a->fd);
-    if (status != APR_SUCCESS) {
-	/* FIXME */
-    }
-
-    for (i = 0; i < d->owner_uids->nelts; ++i) {
-	apr_uid_t uid = ((apr_uid_t *)(d->owner_uids->elts))[i];
-	if (uid == finfo.user) {
-	    uid_found = 1;
-	    break;
-	}
-    }
-
-    if (!uid_found) {
+    if ((errstatus = allowfileowner_check(f->r, a->fd)) != HTTP_OK) {
 	apr_bucket *e;
-
-	ap_log_rerror(APLOG_MARK, APLOG_ERR, HTTP_FORBIDDEN, f->r,
-		      "allowfileowner_handler: "
-		      "Invalid file owner %ld"
-		      ": %s",
-		      (long)finfo.user,
-		      f->r->filename);
 
 	apr_brigade_cleanup(bb);
 	e = ap_bucket_error_create(HTTP_FORBIDDEN,
@@ -110,7 +130,9 @@ static apr_status_t allowfileowner_filter(ap_filter_t *f, apr_bucket_brigade *bb
 	APR_BRIGADE_INSERT_TAIL(bb, e);
 	e = apr_bucket_eos_create(f->c->bucket_alloc);
 	APR_BRIGADE_INSERT_TAIL(bb, e);
-	return ap_pass_brigade(f->next, bb);
+	ap_pass_brigade(f->next, bb);
+
+	return errstatus;
     }
 
     return ap_pass_brigade(f->next, bb);
