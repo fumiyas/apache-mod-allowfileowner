@@ -109,8 +109,6 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
 
 static apr_status_t allowfileowner_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 {
-    apr_status_t status;
-    allowfileowner_dir_config *d;
     apr_bucket *e = APR_BRIGADE_FIRST(bb);
     apr_bucket_file *a;
     int errstatus;
