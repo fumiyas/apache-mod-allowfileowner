@@ -110,27 +110,25 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
 static apr_status_t allowfileowner_filter(ap_filter_t *f, apr_bucket_brigade *bb)
 {
     apr_bucket *e = APR_BRIGADE_FIRST(bb);
-    apr_bucket_file *a;
+    apr_bucket_file *a = e->data;
     int errstatus;
 
     if (!APR_BUCKET_IS_FILE(e)) {
         return ap_pass_brigade(f->next, bb);
     }
 
-    a = e->data;
     if ((errstatus = allowfileowner_check(f->r, a->fd)) != HTTP_OK) {
 	apr_bucket *e;
 
 	apr_brigade_cleanup(bb);
-	e = ap_bucket_error_create(HTTP_FORBIDDEN,
+	e = ap_bucket_error_create(errstatus,
 				    NULL, f->r->pool,
 				    f->c->bucket_alloc);
 	APR_BRIGADE_INSERT_TAIL(bb, e);
 	e = apr_bucket_eos_create(f->c->bucket_alloc);
 	APR_BRIGADE_INSERT_TAIL(bb, e);
-	ap_pass_brigade(f->next, bb);
 
-	return errstatus;
+	return ap_pass_brigade(f->next, bb);
     }
 
     return ap_pass_brigade(f->next, bb);
