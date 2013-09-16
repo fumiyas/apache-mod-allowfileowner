@@ -104,7 +104,7 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
 
     ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
 		  "allowfileowner_handler: "
-		  "Invalid file owner %ld: %s",
+		  "File owner %ld not allowed: %s",
 		  (long)finfo.user, r->filename);
 
     return HTTP_FORBIDDEN;
