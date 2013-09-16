@@ -4,7 +4,7 @@ default: build
 
 build: mod_allowfileowner.la
 
-mod_allowfileowner.la:
+mod_allowfileowner.la: mod_allowfileowner.c
 	$(APXS) -c mod_allowfileowner.c
 
 install: mod_allowfileowner.la
