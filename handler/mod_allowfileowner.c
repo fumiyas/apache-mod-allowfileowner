@@ -81,7 +81,11 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
 
     status = apr_file_info_get(&finfo, APR_FINFO_OWNER, fd);
     if (status != APR_SUCCESS) {
-	/* FIXME */
+	ap_log_rerror(APLOG_MARK, APLOG_ERR, status, r,
+		      "allowfileowner_handler: "
+		      "apr_file_info_get() failed: %s",
+		      r->filename);
+	return HTTP_FORBIDDEN;
     }
 
     if (userdir_user) {
@@ -98,12 +102,11 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
 	}
     }
 
-    ap_log_rerror(APLOG_MARK, APLOG_ERR, status, r,
+    ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
 		  "allowfileowner_handler: "
-		  "Invalid file owner %ld"
-		  ": %s",
-		  (long)finfo.user,
-		  r->filename);
+		  "Invalid file owner %ld: %s",
+		  (long)finfo.user, r->filename);
+
     return HTTP_FORBIDDEN;
 }
 
@@ -205,6 +208,7 @@ static int allowfileowner_handler(request_rec *r)
         }
 
 	if ((errstatus = allowfileowner_check(r, fd)) != HTTP_OK) {
+            apr_file_close(fd);
 	    return errstatus;
 	}
 
