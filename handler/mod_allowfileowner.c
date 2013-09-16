@@ -295,7 +295,7 @@ static int allowfileowner_handler(request_rec *r)
 static const command_rec module_cmds[] =
 {
     AP_INIT_RAW_ARGS("AllowFileOwner", allowfileowner_cmd, NULL, OR_FILEINFO,
-                     "FIXME"),
+                     "A list of user names which content files must be owned by"),
     {NULL}
 };
 

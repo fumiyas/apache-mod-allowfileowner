@@ -137,7 +137,7 @@ static apr_status_t allowfileowner_filter(ap_filter_t *f, apr_bucket_brigade *bb
 static const command_rec module_cmds[] =
 {
     AP_INIT_RAW_ARGS("AllowFileOwner", allowfileowner_cmd, NULL, OR_FILEINFO,
-                     "FIXME"),
+                     "A list of user names which content files must be owned by"),
     {NULL}
 };
 
