@@ -1,4 +1,5 @@
-APXS = apxs
+CFLAGS=
+APXS=		apxs -Wc,"$(CFLAGS)"
 
 default: build
 
