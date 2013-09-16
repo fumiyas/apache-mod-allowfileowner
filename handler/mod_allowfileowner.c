@@ -62,6 +62,51 @@ static const char *allowfileowner_cmd(cmd_parms *cmd, void *in_conf,
     return NULL;
 }
 
+static int allowfileowner_check(request_rec *r, apr_file_t *fd)
+{
+    allowfileowner_dir_config *d;
+    const char *userdir_user;
+    apr_finfo_t finfo;
+    apr_status_t status;
+    int i;
+
+    d = (allowfileowner_dir_config *)ap_get_module_config(r->per_dir_config,
+                                                &allowfileowner_module);
+
+    userdir_user = apr_table_get(r->notes, "mod_userdir_user");
+
+    if (!d->owner_uids->nelts && !userdir_user) {
+	return HTTP_OK;
+    }
+
+    status = apr_file_info_get(&finfo, APR_FINFO_OWNER, fd);
+    if (status != APR_SUCCESS) {
+	/* FIXME */
+    }
+
+    if (userdir_user) {
+	apr_uid_t uid = (apr_uid_t) ap_uname2id(userdir_user);
+	if (uid == finfo.user) {
+	    return HTTP_OK;
+	}
+    }
+
+    for (i = 0; i < d->owner_uids->nelts; ++i) {
+	apr_uid_t uid = ((apr_uid_t *)(d->owner_uids->elts))[i];
+	if (uid == finfo.user) {
+	    return HTTP_OK;
+	}
+    }
+
+    ap_log_rerror(APLOG_MARK, APLOG_ERR, status, r,
+		  "allowfileowner_handler: "
+		  "Invalid file owner %ld"
+		  ": %s",
+		  (long)finfo.user,
+		  r->filename);
+    return HTTP_FORBIDDEN;
+}
+
 static int allowfileowner_handler(request_rec *r)
 {
     conn_rec *c = r->connection;
@@ -79,8 +124,6 @@ static int allowfileowner_handler(request_rec *r)
      *     when the charset is translated).
      */
     int bld_content_md5;
-    allowfileowner_dir_config *d2;
-    int i;
 
     if (strcmp(r->handler,"allowfileowner")) {
         return DECLINED;
@@ -88,8 +131,6 @@ static int allowfileowner_handler(request_rec *r)
 
     d = (core_dir_config *)ap_get_module_config(r->per_dir_config,
                                                 &core_module);
-    d2 = (allowfileowner_dir_config *)ap_get_module_config(r->per_dir_config,
-                                                &allowfileowner_module);
     bld_content_md5 = (d->content_md5 & 1)
                       && r->output_filters->frec->ftype != AP_FTYPE_RESOURCE;
 
@@ -163,32 +204,8 @@ static int allowfileowner_handler(request_rec *r)
             return HTTP_FORBIDDEN;
         }
 
-	if (d2->owner_uids->nelts) {
-	    int uid_found = 0;
-	    apr_finfo_t finfo;
-
-	    status = apr_file_info_get(&finfo, APR_FINFO_OWNER, fd);
-	    if (status != APR_SUCCESS) {
-		/* FIXME */
-	    }
-
-	    for (i = 0; i < d2->owner_uids->nelts; ++i) {
-		apr_uid_t uid = ((apr_uid_t *)(d2->owner_uids->elts))[i];
-		if (uid == finfo.user) {
-		    uid_found = 1;
-		    break;
-		}
-	    }
-
-	    if (!uid_found) {
-		ap_log_rerror(APLOG_MARK, APLOG_ERR, status, r,
-			      "allowfileowner_handler: "
-			      "Invalid file owner %ld"
-			      ": %s",
-			      (long)finfo.user,
-			      r->filename);
-		return HTTP_FORBIDDEN;
-	    }
+	if ((errstatus = allowfileowner_check(r, fd)) != HTTP_OK) {
+	    return errstatus;
 	}
 
         ap_update_mtime(r, r->finfo.mtime);
