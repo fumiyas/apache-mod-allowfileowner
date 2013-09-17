@@ -1,0 +1,5 @@
+.libs
+*.o
+*.la
+*.lo
+*.slo
