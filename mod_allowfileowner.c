@@ -69,15 +69,25 @@ static const char *allowfileowner_cmd(cmd_parms *cmd, void *in_conf,
 static int allowfileowner_check(request_rec *r, apr_file_t *fd)
 {
     allowfileowner_dir_config *d;
-    const char *userdir_user;
+    const char *userdir_user = NULL;
     apr_finfo_t finfo;
     apr_status_t status;
     int i;
 
     d = (allowfileowner_dir_config *)ap_get_module_config(r->per_dir_config,
                                                 &allowfileowner_module);
+    if (d->userdir) {
+	apr_table_t *notes = r->main ? r->main->notes : r->notes;
+	userdir_user = apr_table_get(notes, "mod_userdir_user");
+    }
 
-    userdir_user = apr_table_get(r->notes, "mod_userdir_user");
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r,
+		  "allowfileowner: "
+		  "%s userdir_user=%s, owner_uids->nelts=%d: %s",
+		  (r->main ? "subreq" : "main"),
+		  (userdir_user ? userdir_user : "(null)"),
+		  d->owner_uids->nelts,
+		  r->filename);
 
     if (!d->owner_uids->nelts && !userdir_user) {
 	return HTTP_OK;
