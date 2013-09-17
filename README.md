@@ -7,6 +7,17 @@ Apache HTTPD: mod_allowfileowner - Restrict owner of static content files
   * Blog: <http://fumiyas.github.io/>
   * Twitter: <https://twitter.com/satoh_fumiyasu>
 
+How to use
+----------------------------------------------------------------------
+
+For Japanese:
+
+  * http://fumiyas.github.io/apache/mod-allowfileowner.html
+
+For others:
+
+  * FIXME
+
 Example
 ----------------------------------------------------------------------
 
