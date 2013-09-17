@@ -96,7 +96,7 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
     status = apr_file_info_get(&finfo, APR_FINFO_OWNER, fd);
     if (status != APR_SUCCESS) {
 	ap_log_rerror(APLOG_MARK, APLOG_ERR, status, r,
-		      "allowfileowner_filter: "
+		      "allowfileowner: "
 		      "apr_file_info_get() failed: %s",
 		      r->filename);
 	return HTTP_FORBIDDEN;
@@ -120,7 +120,7 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
     }
 
     ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
-		  "allowfileowner_filter: "
+		  "allowfileowner: "
 		  "File owner %ld not allowed: %s",
 		  (long)finfo.user, r->filename);
 
