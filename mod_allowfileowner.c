@@ -34,6 +34,7 @@ module AP_MODULE_DECLARE_DATA allowfileowner_module;
 
 typedef struct {
     apr_array_header_t *owner_uids;
+    apr_array_header_t *owner_gids;
     int userdir;
 } allowfileowner_dir_config;
 
@@ -42,6 +43,7 @@ static void *create_dir_config(apr_pool_t *p, char *d)
     allowfileowner_dir_config *conf = apr_pcalloc(p, sizeof(*conf));
 
     conf->owner_uids = apr_array_make(p, 1, sizeof(apr_uid_t));
+    conf->owner_gids = apr_array_make(p, 1, sizeof(apr_gid_t));
     conf->userdir = 0;
 
     return conf;
@@ -66,6 +68,24 @@ static const char *allowfileowner_cmd(cmd_parms *cmd, void *in_conf,
     return NULL;
 }
 
+static const char *allowfileownergroup_cmd(cmd_parms *cmd, void *in_conf,
+                                      const char *args)
+{
+    allowfileowner_dir_config *conf = in_conf;
+    const char *groupname;
+    apr_gid_t gid, *gidp;
+
+    while (*args) {
+        groupname = ap_getword_conf(cmd->pool, &args);
+	if (apr_gid_get(&gid, groupname, cmd->pool) == APR_SUCCESS) {
+	    gidp = (apr_gid_t *) apr_array_push(conf->owner_gids);
+	    *gidp = gid;
+	}
+    }
+
+    return NULL;
+}
+
 static int allowfileowner_check(request_rec *r, apr_file_t *fd)
 {
     allowfileowner_dir_config *d;
@@ -83,13 +103,17 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
 
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r,
 		  "allowfileowner: "
-		  "%s userdir_user=%s, owner_uids->nelts=%d: %s",
+		  "%s userdir_user=%s, "
+		  "owner_uids->nelts=%d: "
+		  "owner_gids->nelts=%d: "
+		  "%s",
 		  (r->main ? "subreq" : "main"),
 		  (userdir_user ? userdir_user : "(null)"),
 		  d->owner_uids->nelts,
+		  d->owner_gids->nelts,
 		  r->filename);
 
-    if (!d->owner_uids->nelts && !userdir_user) {
+    if (!d->owner_uids->nelts && !d->owner_gids->nelts && !userdir_user) {
 	return HTTP_OK;
     }
 
@@ -119,10 +143,17 @@ static int allowfileowner_check(request_rec *r, apr_file_t *fd)
 	}
     }
 
+    for (i = 0; i < d->owner_gids->nelts; ++i) {
+	apr_gid_t gid = ((apr_gid_t *)(d->owner_gids->elts))[i];
+	if (gid == finfo.group) {
+	    return HTTP_OK;
+	}
+    }
+
     ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
 		  "allowfileowner: "
-		  "File owner %ld not allowed: %s",
-		  (long)finfo.user, r->filename);
+		  "File owner:group %ld:%ld not allowed: %s",
+		  (long)finfo.user, (long)finfo.group, r->filename);
 
     return HTTP_FORBIDDEN;
 }
@@ -156,8 +187,12 @@ static apr_status_t allowfileowner_filter(ap_filter_t *f, apr_bucket_brigade *bb
 
 static const command_rec module_cmds[] =
 {
-    AP_INIT_RAW_ARGS("AllowFileOwner", allowfileowner_cmd, NULL, OR_FILEINFO,
+    AP_INIT_RAW_ARGS("AllowFileOwner", allowfileowner_cmd,
+		     NULL, OR_FILEINFO,
                      "A list of user names which content files must be owned by"),
+    AP_INIT_RAW_ARGS("AllowFileOwnerGroup", allowfileownergroup_cmd,
+		     NULL, OR_FILEINFO,
+                     "A list of group names which content files must be owned by"),
     AP_INIT_FLAG("AllowFileOwnerInUserDir", ap_set_flag_slot,
                  (void *)APR_OFFSETOF(allowfileowner_dir_config, userdir),
                  OR_FILEINFO,
