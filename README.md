@@ -7,6 +7,9 @@ Apache HTTPD: mod_allowfileowner - Restrict owner of static content files
   * Blog: <http://fumiyas.github.io/>
   * Twitter: <https://twitter.com/satoh_fumiyasu>
 
+What's this?
+----------------------------------------------------------------------
+
 How to use
 ----------------------------------------------------------------------
 
@@ -14,31 +17,29 @@ For Japanese:
 
   * http://fumiyas.github.io/apache/mod-allowfileowner.html
 
-For others:
-
-  * FIXME
-
-Example
-----------------------------------------------------------------------
-
 ```
 LoadModule allowfileowner_module modules/mod_allowfileowner.so
 
 <VirtualHost *>
   ## ...
 
+  ## Set to default output filter
   SetOutputFilter ALLOWFILEOWNER
+
+  ## Add to existing output filter
+  AddOutputFilter ALLOWFILEOWNER;INCLUDES .shtml
 
   DocumentRoot /var/www
   <Directory /var/www>
-    ## Content files must be owned by the following users
-    AllowFileOwner foo bar
+    ## Static content files must be owned by the following users and group
+    AllowFileOwner webadmin apache
+    AllowFileOwnerGroup webusers
     ## ...
   </Directory>
 
   UserDir public_html
   <Directory /home/*/public_html>
-    ## Content files must be owned by the individual user
+    ## Static content files must be owned by the individual user
     AllowFileOwnerInUserDir On
   </Directory>
 
