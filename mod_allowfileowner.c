@@ -16,10 +16,10 @@
 
 /*
  * Apache HTTPD: mod_allowfileowner - Restrict owner of static content files
- * Copyright (c) 2013 SATOH Fumiyasu @ OSS Technology Corp., Japan
+ * Copyright (c) 2013-2014 SATOH Fumiyasu @ OSS Technology Corp., Japan
  *
  * Development home: <https://github.com/fumiyas/apache-mod-allowfileowner>
- * Author's home: <http://fumiyas.github.io/>
+ * Author's home: <https://fumiyas.github.io/>
  */
 
 #include "httpd.h"
