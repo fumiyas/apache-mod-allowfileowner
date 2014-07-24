@@ -56,3 +56,8 @@ LoadModule allowfileowner_module modules/mod_allowfileowner.so
 </VirtualHost>
 ```
 
+Similar module
+----------------------------------------------------------------------
+
+  * https://github.com/matsumoto-r/mod_fileownercheck
+
