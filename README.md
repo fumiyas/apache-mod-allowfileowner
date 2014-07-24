@@ -17,6 +17,15 @@ For Japanese:
 
   * http://fumiyas.github.io/apache/mod-allowfileowner.html
 
+
+Build and install:
+
+``` console
+# apxs -c -i mod_allowfileowner.c
+```
+
+Example Apache `httpd.conf`:
+
 ```
 LoadModule allowfileowner_module modules/mod_allowfileowner.so
 
